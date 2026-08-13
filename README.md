@@ -2,6 +2,14 @@
 
 本文记录如何将 RoboMaster TT Open-Source Controller 的 ESP32 开发环境，从 Arduino IDE 的 TelloTalent 专用 Board Package 迁移到 VSCode + PlatformIO。
 
+## Original Project
+
+This project is based on the original Arduino implementation:
+
+Original Arduino library: RoboMaster/RMTT_Libs
+
+Thanks to the original author for providing the Arduino implementation.
+
 ## 1. 为什么不能直接选择 `esp32dev`
 
 RoboMaster TT Open-Source Controller 使用的 ESP32 板级配置与普通 ESP32 Dev Module 不完全相同。
