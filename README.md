@@ -1,39 +1,39 @@
-# RoboMaster TT ESP32：从 Arduino IDE 迁移到 VSCode + PlatformIO
+# RoboMaster TT ESP32: Migrating from Arduino IDE to VS Code + PlatformIO
 
-本文记录如何将 RoboMaster TT Open-Source Controller 的 ESP32 开发环境，从 Arduino IDE 的 TelloTalent 专用 Board Package 迁移到 VSCode + PlatformIO。
+This guide explains how to migrate the ESP32 development environment for the RoboMaster TT Open-Source Controller from the dedicated TelloTalent board package for Arduino IDE to VS Code and PlatformIO.
 
 ## Original Project
 
 This project is based on the original Arduino implementation:
 
-Original Arduino library: RoboMaster/RMTT_Libs
+Original Arduino library: `RoboMaster/RMTT_Libs`
 
 Thanks to the original author for providing the Arduino implementation.
 
-## 1. 为什么不能直接选择 `esp32dev`
+## 1. Why You Cannot Simply Use `esp32dev`
 
-RoboMaster TT Open-Source Controller 使用的 ESP32 板级配置与普通 ESP32 Dev Module 不完全相同。
+The ESP32 board configuration used by the RoboMaster TT Open-Source Controller differs from that of a standard ESP32 Dev Module.
 
-直接在 PlatformIO 中使用：
+Using the following configuration directly in PlatformIO:
 
 ```ini
 board = esp32dev
 ```
 
-可能导致启动失败，例如：
+may prevent the board from booting and produce an error such as:
 
 ```text
 Detected size(2048k) smaller than the size in the binary image header(4096k)
 ```
 
-甚至不断：
+The board may also continuously reset with messages such as:
 
 ```text
 rst:0x3 (SW_RESET)
 rst:0xc (SW_CPU_RESET)
 ```
 
-原因是普通 `esp32dev` 默认按照 4MB Flash 等参数编译，而 RoboMaster TT 的专用 Arduino Board Package 中定义的是：
+This happens because the standard `esp32dev` configuration assumes a 4 MB flash chip and other default parameters. The dedicated Arduino board package for the RoboMaster TT instead defines the following:
 
 ```text
 CPU Frequency   = 160 MHz
@@ -44,7 +44,7 @@ Partition       = minimal
 Variant         = telloesp32
 ```
 
-这些参数来自 TelloTalent 的 `boards.txt`：
+These settings come from the TelloTalent `boards.txt` file:
 
 ```text
 telloesp32.build.mcu=esp32
@@ -61,19 +61,19 @@ telloesp32.build.partitions=minimal
 
 ---
 
-## 2. 先确认 Arduino IDE 环境正常
+## 2. Verify the Arduino IDE Environment First
 
-建议首先使用 TelloTalent 专用 Arduino Board Package 验证硬件。
+Before migrating, use the dedicated TelloTalent board package for Arduino IDE to verify that the hardware works correctly.
 
-如果使用 CP2102N USB-UART，但 Windows 设备管理器出现黄色感叹号，需要安装 Silicon Labs CP210x VCP Driver。
+If you are using a CP2102N USB-to-UART adapter and Windows Device Manager displays a yellow warning icon, install the Silicon Labs CP210x VCP driver.
 
-正常以后设备管理器应该显示类似：
+Once the driver is working, Device Manager should display an entry similar to:
 
 ```text
 Silicon Labs CP210x USB to UART Bridge (COM8)
 ```
 
-使用专用 Arduino Board Package 烧录最简单程序：
+Use the dedicated Arduino board package to upload this minimal test program:
 
 ```cpp
 void setup()
@@ -91,19 +91,19 @@ void loop()
 }
 ```
 
-确认能够正常运行以后，再进行 PlatformIO 迁移。
+Proceed with the PlatformIO migration only after confirming that this program runs correctly.
 
 ---
 
-## 3. 创建 PlatformIO 项目
+## 3. Create a PlatformIO Project
 
-例如项目目录：
+For example, the project directory can be:
 
 ```text
 C:\Users\<USERNAME>\Documents\PlatformIO\Projects\Robomaster
 ```
 
-项目结构：
+Use the following project structure:
 
 ```text
 Robomaster
@@ -121,15 +121,15 @@ Robomaster
 
 ---
 
-## 4. 创建 RoboMaster TT 自定义 Board
+## 4. Create a Custom RoboMaster TT Board Definition
 
-在项目根目录创建：
+Create the following file in the project root:
 
 ```text
 boards/telloesp32.json
 ```
 
-示例：
+Example configuration:
 
 ```json
 {
@@ -174,31 +174,31 @@ boards/telloesp32.json
 }
 ```
 
-最重要的是：
+The most important setting is:
 
 ```json
 "flash_size": "2MB"
 ```
 
-以及：
+The custom variant is equally important:
 
 ```json
 "variant": "telloesp32"
 ```
 
-如果仍然使用普通：
+If you continue using the standard variant:
 
 ```json
 "variant": "esp32"
 ```
 
-虽然 ESP32 可能可以启动，但是 RoboMaster TT 的默认 GPIO 映射不会生效。
+the ESP32 may boot, but the default RoboMaster TT GPIO mapping will not be applied.
 
 ---
 
-## 5. 配置 `platformio.ini`
+## 5. Configure `platformio.ini`
 
-例如：
+Example configuration:
 
 ```ini
 [env:telloesp32]
@@ -220,31 +220,31 @@ board_build.flash_mode = dio
 board_build.partitions = minimal.csv
 ```
 
-`COM8` 根据自己的设备管理器修改。
+Replace `COM8` with the port shown for your device in Windows Device Manager.
 
 ---
 
-## 6. 复制 TT 的 Partition Table
+## 6. Copy the TT Partition Table
 
-Arduino TelloTalent Board Package 使用：
+The Arduino TelloTalent board package uses:
 
 ```text
 build.partitions=minimal
 ```
 
-因此找到 Arduino 专用 Package 中对应的：
+Locate the corresponding file in the dedicated Arduino package:
 
 ```text
 minimal.csv
 ```
 
-复制到 PlatformIO 项目根目录：
+Copy it to the root of the PlatformIO project:
 
 ```text
 Robomaster/minimal.csv
 ```
 
-然后：
+Then configure PlatformIO to use it:
 
 ```ini
 board_build.partitions = minimal.csv
@@ -252,17 +252,17 @@ board_build.partitions = minimal.csv
 
 ---
 
-## 7. 迁移 `pins_arduino.h`
+## 7. Migrate `pins_arduino.h`
 
-这是非常关键的一步。
+This is a critical step.
 
-TelloTalent Arduino Package 中存在：
+The TelloTalent Arduino package contains:
 
 ```text
 variants/telloesp32/pins_arduino.h
 ```
 
-其中定义了 RoboMaster TT 的真实默认 GPIO：
+This file defines the actual default GPIO mapping for the RoboMaster TT:
 
 ```cpp
 static const uint8_t TX = 1;
@@ -277,51 +277,47 @@ static const uint8_t MISO = 19;
 static const uint8_t SCK  = 18;
 ```
 
-特别是：
+In particular:
 
 ```text
 I2C SDA = GPIO27
 I2C SCL = GPIO26
 ```
 
-普通 ESP32 的默认 I2C 引脚通常不同。
+The standard ESP32 default I2C pins are usually different.
 
-如果 PlatformIO 使用错误的 variant：
+If PlatformIO uses the wrong variant, the following call:
 
 ```cpp
 Wire.begin();
 ```
 
-可能一个 I2C 设备都扫描不到。
-
-而手动：
+may fail to detect any I2C devices, while explicitly specifying the pins:
 
 ```cpp
 Wire.begin(27, 26);
 ```
 
-却能够正常工作。
-
-这就是 `variant` 没有迁移成功的典型表现。
+may work correctly. This is a typical sign that the custom variant was not migrated successfully.
 
 ---
 
-## 8. 让 PlatformIO 找到 `telloesp32` Variant
+## 8. Make the `telloesp32` Variant Available to PlatformIO
 
-将 Arduino Package 中：
+Copy the following directory from the Arduino package:
 
 ```text
 variants/telloesp32
 ```
 
-这个文件夹复制到 PlatformIO ESP32 Arduino Framework 的：
+Place it in the PlatformIO ESP32 Arduino framework's variant directory:
 
 ```text
 C:\Users\<USERNAME>\.platformio\packages\
 framework-arduinoespressif32\variants\
 ```
 
-最终结构：
+The final directory structure should be:
 
 ```text
 framework-arduinoespressif32
@@ -330,10 +326,10 @@ framework-arduinoespressif32
         └── pins_arduino.h
 ```
 
-注意不要多套一层：
+Do not accidentally add an extra nested directory:
 
 ```text
-错误：
+Incorrect:
 
 variants
 └── telloesp32
@@ -341,13 +337,13 @@ variants
         └── pins_arduino.h
 ```
 
-否则编译时会出现：
+Otherwise, compilation will fail with:
 
 ```text
 fatal error: pins_arduino.h: No such file or directory
 ```
 
-自定义 Board 中同时需要：
+The custom board definition must also contain:
 
 ```json
 "variant": "telloesp32"
@@ -355,9 +351,9 @@ fatal error: pins_arduino.h: No such file or directory
 
 ---
 
-## 9. Clean 后重新编译
+## 9. Clean and Rebuild the Project
 
-迁移 Board / Variant 后建议：
+After migrating the board definition and variant, run:
 
 ```text
 PlatformIO
@@ -366,19 +362,19 @@ PlatformIO
 → Upload
 ```
 
-如果之前使用过错误的 4MB 配置，建议还可以执行一次：
+If the board was previously flashed using the incorrect 4 MB configuration, it is also a good idea to run:
 
 ```text
 Erase Flash
 ```
 
-然后重新 Upload。
+Then upload the firmware again.
 
 ---
 
-## 10. 验证 PlatformIO 是否真正识别 TT
+## 10. Verify That PlatformIO Recognizes the TT Board
 
-先测试：
+Start with this test program:
 
 ```cpp
 #include <Arduino.h>
@@ -398,7 +394,7 @@ void loop()
 }
 ```
 
-成功：
+Expected output:
 
 ```text
 TT PlatformIO OK
@@ -409,21 +405,21 @@ RUNNING
 
 ---
 
-## 11. 验证 I2C Variant
+## 11. Verify the I2C Variant
 
-接入一个 VL53L0X，然后注意这里直接使用：
+Connect a VL53L0X sensor. Notice that the test uses:
 
 ```cpp
 Wire.begin();
 ```
 
-而不是：
+rather than:
 
 ```cpp
 Wire.begin(27, 26);
 ```
 
-测试：
+Use the following test program:
 
 ```cpp
 #include <Arduino.h>
@@ -463,7 +459,7 @@ void loop()
 }
 ```
 
-在 RoboMaster TT + VL53L0X 环境中测试得到：
+Testing with a RoboMaster TT and VL53L0X produced:
 
 ```text
 I2C Scan Start...
@@ -472,87 +468,87 @@ Found: 0x50
 Scan Finished.
 ```
 
-其中：
+The detected addresses correspond to:
 
 ```text
 0x29 = VL53L0X
-0x50 = RoboMaster TT 板载 LED Matrix 相关设备
+0x50 = Device associated with the RoboMaster TT onboard LED matrix
 ```
 
-此时说明：
+At this point, the complete configuration path is working:
 
 ```text
 PlatformIO
     ↓
-自定义 telloesp32 Board
+Custom telloesp32 board
     ↓
-telloesp32 Variant
+telloesp32 variant
     ↓
 pins_arduino.h
     ↓
 SDA = GPIO27
 SCL = GPIO26
     ↓
-I2C 正常工作
+I2C working correctly
 ```
 
-迁移完成。
+The migration is now complete.
 
 ---
 
-## 常见问题
+## Troubleshooting
 
 ### `Detected size(2048k) smaller than ... 4096k`
 
-PlatformIO 仍然按照普通 ESP32 的 4MB Flash 配置编译。
+PlatformIO is still compiling the project using the standard ESP32 4 MB flash configuration.
 
-确认自定义 Board：
+Confirm that the custom board definition contains:
 
 ```json
 "flash_size": "2MB"
 ```
 
-并执行：
+Then run:
 
 ```text
 Clean
 Erase Flash
-重新 Upload
+Upload again
 ```
 
 ### `pins_arduino.h: No such file or directory`
 
-PlatformIO 找不到：
+PlatformIO cannot find:
 
 ```text
 variants/telloesp32/pins_arduino.h
 ```
 
-确认：
+Confirm that the custom board definition contains:
 
 ```json
 "variant": "telloesp32"
 ```
 
-并确认 variant 已复制到正确目录。
+Also confirm that the variant was copied to the correct directory.
 
-### `Wire.begin()` 扫不到任何设备
+### `Wire.begin()` Does Not Detect Any Devices
 
-如果：
+If explicitly specifying the pins works:
 
 ```cpp
 Wire.begin(27, 26);
 ```
 
-可以工作，而：
+but the default call does not:
 
 ```cpp
 Wire.begin();
 ```
 
-不工作，基本说明 `telloesp32` variant 没有正确加载。
+the `telloesp32` variant was most likely not loaded correctly.
 
-TT 的 I2C 定义为：
+The RoboMaster TT I2C pins are defined as:
 
 ```text
 SDA = GPIO27
@@ -561,32 +557,32 @@ SCL = GPIO26
 
 ---
 
-## 已验证环境
+## Verified Environment
 
-最终成功验证：
+The final configuration was successfully verified with:
 
 ```text
 RoboMaster TT Open-Source Controller
         +
-CP2102N USB-UART
+CP2102N USB-to-UART
         +
-VSCode
+VS Code
         +
 PlatformIO
         +
 Arduino Framework
         +
-Custom telloesp32 Board
+Custom telloesp32 board
         +
 TelloTalent pins_arduino.h
         ↓
-正常启动
+Boots correctly
         ↓
 Wire.begin()
         ↓
 VL53L0X @ 0x29
         ↓
-工作正常
+Working correctly
 ```
 
-这套环境可以继续用于 PCA9548A、多路 VL53L0X、传感器滤波以及 RoboMaster TT 本地避障开发。
+This environment can be used as a foundation for PCA9548A integration, multiple VL53L0X sensors, sensor filtering, and onboard obstacle-avoidance development for the RoboMaster TT.
