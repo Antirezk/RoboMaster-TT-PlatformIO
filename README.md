@@ -1,5 +1,17 @@
 # RoboMaster TT ESP32: Migrating from Arduino IDE to VS Code + PlatformIO
 
+## Integrated autonomous stack
+
+The repository now also contains the Windows/Python Mission Pad controller in
+[`llm_drone/`](llm_drone/README.md). In integrated flight mode, Python sends
+20 Hz desired RC over the ESP32 `TT-HighLevel` Wi-Fi AP; this firmware applies
+the four-ToF reflex layer and remains the sole writer to the TT UART. See
+[`HIGH_LEVEL_PROTOCOL.md`](HIGH_LEVEL_PROTOCOL.md) for the wire protocol,
+arbitration order, fail-safes, and bench/flight test sequence.
+
+Do not run DJITelloPy direct RC and the integrated ESP32 control path at the
+same time.
+
 This guide explains how to migrate the ESP32 development environment for the RoboMaster TT Open-Source Controller from the dedicated TelloTalent board package for Arduino IDE to VS Code and PlatformIO.
 
 ## Original Project

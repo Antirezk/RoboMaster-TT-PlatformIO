@@ -59,6 +59,20 @@ void CommandInput::parseLine()
     if (strcmp(buffer, "stop") == 0)
     {
         submit({}, millis());
+        pendingAction.action = HighLevelAction::STOP;
+        return;
+    }
+
+    if (strcmp(buffer, "hello") == 0)
+    {
+        pendingAction.action = HighLevelAction::HELLO;
+        return;
+    }
+
+    if (strcmp(buffer, "takeoff") == 0)
+    {
+        desired = {};
+        pendingAction.action = HighLevelAction::TAKEOFF;
         return;
     }
 
@@ -86,11 +100,24 @@ void CommandInput::parseLine()
 
     if (strcmp(buffer, "help") == 0)
     {
-        Serial.println("INPUT: rc <lr> <fb> <ud> <yaw> | stop | mission <1..8> | land | abort");
+        Serial.println("INPUT: hello | rc <lr> <fb> <ud> <yaw> | stop | takeoff | mission <1..8> | land | abort");
         return;
     }
 
     Serial.printf("INPUT ERROR: '%s'\n", buffer);
+}
+
+bool CommandInput::submitLine(const char* line)
+{
+    if (line == nullptr)
+        return false;
+    size_t inputLength = strlen(line);
+    if (inputLength == 0 || inputLength >= BUFFER_SIZE)
+        return false;
+    memcpy(buffer, line, inputLength + 1);
+    length = 0;
+    parseLine();
+    return true;
 }
 
 void CommandInput::submit(const RCCommand& command, uint32_t now)

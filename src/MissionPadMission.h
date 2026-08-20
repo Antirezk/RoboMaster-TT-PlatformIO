@@ -11,6 +11,7 @@ enum class MissionState : uint8_t
     ENABLE_PAD,
     SET_PAD_DIRECTION,
     READY,
+    MANUAL_TAKEOFF,
     TAKEOFF,
     TAKEOFF_SETTLE,
     GO_TO_PAD,
@@ -32,6 +33,7 @@ private:
     uint8_t targetPadId = 1;
     uint8_t requestedPadId = 0;
     bool abortRequested = false;
+    bool manualTakeoffRequested = false;
     bool airborne = false;
     char errorMessage[96] = {};
 
@@ -48,6 +50,7 @@ public:
     void begin(uint32_t now);
     void update(uint32_t now, TTController& drone, const ObstacleAvoidance& safety);
     bool requestStart(uint8_t padId);
+    bool requestTakeoff();
     void requestAbort();
 
     bool manualControlAllowed() const;

@@ -42,6 +42,9 @@ void TTController::poll()
 
 void TTController::handleLine(const char* line)
 {
+    if (parseTelemetry(line))
+        return;
+
     // Official Open-Source Controller replies are prefixed with "ETT".
     // Ignore unrelated UART lines so they cannot complete the wrong command.
     if (strncmp(line, "ETT", 3) != 0)
@@ -66,6 +69,50 @@ void TTController::handleLine(const char* line)
 
     if (debugOutput)
         Serial.printf("TT RX: %s\n", line);
+}
+
+bool TTController::parseTelemetry(const char* line)
+{
+    // VERIFY_ON_HARDWARE: expected TT state fields are mid/x/y/z/bat/h.
+    if (strstr(line, "mid:") == nullptr && strstr(line, "bat:") == nullptr)
+        return false;
+
+    char copy[RX_BUFFER_SIZE] = {};
+    strncpy(copy, line, sizeof(copy) - 1);
+    bool parsed = false;
+    char* save = nullptr;
+    for (char* token = strtok_r(copy, ";", &save); token != nullptr;
+         token = strtok_r(nullptr, ";", &save))
+    {
+        while (*token == ' ') ++token;
+        int value = 0;
+        const char* midField = strstr(token, "mid:");
+        if (midField != nullptr && sscanf(midField, "mid:%d", &value) == 1)
+        {
+            telemetry.missionPadId = static_cast<int8_t>(value);
+            parsed = true;
+        }
+        else if (sscanf(token, "x:%d", &value) == 1)
+            telemetry.missionPadX = static_cast<int16_t>(value);
+        else if (sscanf(token, "y:%d", &value) == 1)
+            telemetry.missionPadY = static_cast<int16_t>(value);
+        else if (sscanf(token, "z:%d", &value) == 1)
+            telemetry.missionPadZ = static_cast<int16_t>(value);
+        else if (sscanf(token, "bat:%d", &value) == 1)
+        {
+            telemetry.batteryPercent = static_cast<int16_t>(value);
+            parsed = true;
+        }
+        else if (sscanf(token, "h:%d", &value) == 1)
+            telemetry.heightCm = static_cast<int16_t>(value);
+    }
+
+    if (parsed)
+    {
+        telemetry.updatedAt = millis();
+        telemetry.valid = true;
+    }
+    return parsed;
 }
 
 bool TTController::sendAction(const char* command, bool force)
@@ -195,4 +242,9 @@ void TTController::clearResponse()
 void TTController::setDebug(bool enable)
 {
     debugOutput = enable;
+}
+
+const TTTelemetry& TTController::getTelemetry() const
+{
+    return telemetry;
 }

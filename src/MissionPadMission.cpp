@@ -17,6 +17,7 @@ void MissionPadMission::begin(uint32_t now)
     retryCount = 0;
     requestedPadId = 0;
     abortRequested = false;
+    manualTakeoffRequested = false;
     airborne = false;
     errorMessage[0] = '\0';
 }
@@ -40,7 +41,8 @@ bool MissionPadMission::allDirectionsClear(const ObstacleAvoidance& safety) cons
 
 bool MissionPadMission::autonomousFlightState() const
 {
-    return state == MissionState::TAKEOFF ||
+    return state == MissionState::MANUAL_TAKEOFF ||
+           state == MissionState::TAKEOFF ||
            state == MissionState::TAKEOFF_SETTLE ||
            state == MissionState::GO_TO_PAD ||
            state == MissionState::PAD_SETTLE;
@@ -76,6 +78,7 @@ uint32_t MissionPadMission::commandTimeoutMs() const
 {
     switch (state)
     {
+        case MissionState::MANUAL_TAKEOFF:
         case MissionState::TAKEOFF: return 15000;
         case MissionState::GO_TO_PAD: return 20000;
         case MissionState::LANDING:
@@ -101,6 +104,7 @@ void MissionPadMission::issueStateCommand(uint32_t now, TTController& drone)
         case MissionState::SET_PAD_DIRECTION:
             sent = drone.setMissionPadDirection(0); // downward only, 20 Hz
             break;
+        case MissionState::MANUAL_TAKEOFF:
         case MissionState::TAKEOFF:
             sent = drone.takeOff();
             break;
@@ -120,7 +124,7 @@ void MissionPadMission::issueStateCommand(uint32_t now, TTController& drone)
         // Treat the aircraft as potentially airborne as soon as TAKEOFF is
         // accepted by the UART. If its reply is lost, the timeout path must
         // still choose an abort/land sequence instead of assuming it is safe.
-        if (state == MissionState::TAKEOFF)
+        if (state == MissionState::TAKEOFF || state == MissionState::MANUAL_TAKEOFF)
             airborne = true;
 
         commandIssued = true;
@@ -155,6 +159,10 @@ void MissionPadMission::handleCommandResult(uint32_t now, TTController& drone)
                 transition(MissionState::SET_PAD_DIRECTION, now);
                 break;
             case MissionState::SET_PAD_DIRECTION:
+                transition(MissionState::READY, now);
+                break;
+            case MissionState::MANUAL_TAKEOFF:
+                airborne = true;
                 transition(MissionState::READY, now);
                 break;
             case MissionState::TAKEOFF:
@@ -218,7 +226,15 @@ void MissionPadMission::update(
     switch (state)
     {
         case MissionState::READY:
-            if (requestedPadId != 0)
+            if (manualTakeoffRequested)
+            {
+                manualTakeoffRequested = false;
+                if (!allDirectionsClear(safety))
+                    Serial.println("MANUAL TAKEOFF rejected: ToF safety is not NORMAL");
+                else
+                    transition(MissionState::MANUAL_TAKEOFF, now);
+            }
+            else if (requestedPadId != 0)
             {
                 if (!allDirectionsClear(safety))
                 {
@@ -265,9 +281,17 @@ void MissionPadMission::update(
 
 bool MissionPadMission::requestStart(uint8_t padId)
 {
-    if (state != MissionState::READY || padId < 1 || padId > 8)
+    if (state != MissionState::READY || airborne || padId < 1 || padId > 8)
         return false;
     requestedPadId = padId;
+    return true;
+}
+
+bool MissionPadMission::requestTakeoff()
+{
+    if (state != MissionState::READY || airborne || manualTakeoffRequested)
+        return false;
+    manualTakeoffRequested = true;
     return true;
 }
 
@@ -295,6 +319,7 @@ const char* missionStateName(MissionState state)
         case MissionState::ENABLE_PAD: return "ENABLE_PAD";
         case MissionState::SET_PAD_DIRECTION: return "SET_PAD_DIRECTION";
         case MissionState::READY: return "READY";
+        case MissionState::MANUAL_TAKEOFF: return "MANUAL_TAKEOFF";
         case MissionState::TAKEOFF: return "TAKEOFF";
         case MissionState::TAKEOFF_SETTLE: return "TAKEOFF_SETTLE";
         case MissionState::GO_TO_PAD: return "GO_TO_PAD";

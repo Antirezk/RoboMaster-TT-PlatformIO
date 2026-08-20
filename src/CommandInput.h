@@ -7,6 +7,9 @@
 enum class HighLevelAction : uint8_t
 {
     NONE,
+    HELLO,
+    STOP,
+    TAKEOFF,
     START_PAD_MISSION,
     LAND,
     ABORT
@@ -35,6 +38,7 @@ private:
 public:
     explicit CommandInput(uint32_t commandTimeoutMs = 500);
     void poll(Stream& stream);
+    bool submitLine(const char* line);
     void submit(const RCCommand& command, uint32_t now);
     RCCommand getDesired(uint32_t now) const;
     bool isFresh(uint32_t now) const;

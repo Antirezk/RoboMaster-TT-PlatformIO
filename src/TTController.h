@@ -19,10 +19,22 @@ struct TTResponse
     uint32_t receivedAt = 0;
 };
 
+struct TTTelemetry
+{
+    int8_t missionPadId = -1;
+    int16_t missionPadX = 0;
+    int16_t missionPadY = 0;
+    int16_t missionPadZ = 0;
+    int16_t heightCm = -1;
+    int16_t batteryPercent = -1;
+    uint32_t updatedAt = 0;
+    bool valid = false;
+};
+
 class TTController
 {
 private:
-    static constexpr size_t RX_BUFFER_SIZE = 128;
+    static constexpr size_t RX_BUFFER_SIZE = 256;
 
     char rxBuffer[RX_BUFFER_SIZE] = {};
     size_t rxLength = 0;
@@ -31,9 +43,11 @@ private:
     bool pendingCommand = false;
     uint32_t commandStartedAt = 0;
     bool debugOutput = true;
+    TTTelemetry telemetry;
 
     bool sendAction(const char* command, bool force = false);
     void handleLine(const char* line);
+    bool parseTelemetry(const char* line);
 
 public:
     void begin();
@@ -56,6 +70,7 @@ public:
     bool takeResponse(TTResponse& result);
     void clearResponse();
     void setDebug(bool enable);
+    const TTTelemetry& getTelemetry() const;
 };
 
 #endif
