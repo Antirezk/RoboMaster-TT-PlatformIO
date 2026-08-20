@@ -1,9 +1,7 @@
 # RoboMaster TT Mission Pad MVP
 
-> 本文保留机载 `mission <id>` 的独立回归测试流程。当前 Laptop 高层集成模式见
-> [`llm_drone/README.md`](llm_drone/README.md) 和
-> [`HIGH_LEVEL_PROTOCOL.md`](HIGH_LEVEL_PROTOCOL.md)。集成模式由 Python 计算期望 RC，
-> ESP32 执行四向 ToF 反射和最终 RC 仲裁；不要同时启动本文的机载 `mission` 和 Python任务。
+> 本文记录机载 `mission <id>` 的独立回归测试流程。ESP32 高层通信、四向 ToF
+> 反射和最终 RC 仲裁见 [`HIGH_LEVEL_PROTOCOL.md`](HIGH_LEVEL_PROTOCOL.md)。
 
 ## 当前最小目标
 
