@@ -1,0 +1,4 @@
+.venv/
+.venv-pc/
+.cache/
+logs/*.log*

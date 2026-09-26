@@ -1,0 +1,5 @@
+# Text/UDP simulation uses only Python's standard library.
+# Install these for offline English microphone recognition.
+numpy>=2.0,<3
+sounddevice>=0.5,<1
+faster-whisper>=1.1,<2

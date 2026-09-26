@@ -1,5 +1,7 @@
 # RoboMaster TT PlatformIO Controller
 
+For the PC-only English voice → local ASR → direct Tello SDK UDP demo, see [llm_drone/pc_demo/README.md](llm_drone/pc_demo/README.md). It includes independent command/telemetry channels, a loopback UDP simulator, and visible Mission Pad alignment/landing.
+
 PlatformIO firmware for the RoboMaster TT Open-Source Controller, with four-direction VL53L0X obstacle sensing, Mission Pad support, and a high-level UDP control interface.
 
 The ESP32 acts as the safety and communication layer between a laptop controller and the RoboMaster TT. It is the only component that writes RC and action commands to the TT internal UART.

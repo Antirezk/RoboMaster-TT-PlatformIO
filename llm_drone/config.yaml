@@ -1,0 +1,83 @@
+drone:
+  minimum_takeoff_battery: 25
+  mission_pad_direction: 0  # 0 = downward camera; verify with the installed TT firmware
+
+transport:
+  mode: esp32_udp
+  udp_host: 192.168.4.1
+  udp_port: 8889
+  wifi_ssid: TT-HighLevel
+  serial_port: COM8
+  baudrate: 115200
+  connect_timeout_sec: 15.0
+  telemetry_timeout_sec: 0.6
+
+control:
+  loop_hz: 20
+  max_xy_speed: 25
+  max_vertical_speed: 20
+
+search:
+  strategy: yaw
+  yaw_speed: 20
+
+safety:
+  intervention_timeout_sec: 3.0
+  sensor_fault_timeout_sec: 0.5
+
+mission:
+  takeoff_settle_sec: 2.0
+  search_timeout_sec: 30.0
+  total_timeout_sec: 120.0
+  max_recoveries: 3
+
+mission_pad:
+  alignment_tolerance_cm: 5
+  stable_frames: 10
+  landing_trigger_height_cm: 30
+  lost_timeout_sec: 0.5
+  invert_x: false  # VERIFY_ON_HARDWARE
+  invert_y: false  # VERIFY_ON_HARDWARE
+
+pid:
+  x:
+    kp: 0.4
+    ki: 0.0
+    kd: 0.05
+    integral_limit: 30
+  y:
+    kp: 0.4
+    ki: 0.0
+    kd: 0.05
+    integral_limit: 30
+
+llm:
+  enabled: true
+  provider: ollama
+  model: qwen3.5:9b
+  base_url: http://127.0.0.1:11434
+  timeout_sec: 90
+  keep_alive: 30m
+  think: false
+
+voice:
+  asr_backend: faster_whisper
+  model: medium
+  device: cpu
+  compute_type: int8
+  language: zh
+  beam_size: 5
+  initial_prompt: "RoboMaster TT，挑战垫，任务垫，一号，二号，三号，四号，五号，六号，七号，八号，起飞，降落，停止，电量，状态"
+  sample_rate: 16000
+  block_ms: 30
+  calibration_sec: 0.4
+  pre_roll_sec: 0.25
+  speech_timeout_sec: 3.0
+  silence_stop_sec: 0.8
+  max_record_sec: 8.0
+  minimum_rms: 0.012
+  noise_multiplier: 3.0
+  minimum_language_probability: 0.50
+  minimum_average_log_probability: -1.0
+  maximum_no_speech_probability: 0.60
+  audio_device: null
