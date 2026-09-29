@@ -1,0 +1,5 @@
+.pio/
+__pycache__/
+.pytest_cache/
+*.exe
+build.log
