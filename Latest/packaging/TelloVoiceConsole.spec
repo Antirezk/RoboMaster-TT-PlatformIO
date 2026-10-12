@@ -1,4 +1,4 @@
-# PyInstaller spec - build with:  pyinstaller packaging/TelloVoiceConsole.spec --noconfirm   (run from V3/)
+# PyInstaller spec - build with:  pyinstaller packaging/TelloVoiceConsole.spec --noconfirm   (run from the Latest/ folder)
 import os
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
 

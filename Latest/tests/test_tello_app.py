@@ -1,4 +1,4 @@
-"""Tests for tello_app (voice console). Run from V3/: python -m pytest tests -q"""
+"""Tests for tello_app (voice console). Run from Latest/: python -m pytest tests -q"""
 from dataclasses import replace
 import re
 import time

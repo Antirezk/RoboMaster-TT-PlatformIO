@@ -16,4 +16,4 @@ RoboMaster TT Voice Console V3 - Windows 绿色版
 
 自检：命令行运行  TelloVoiceConsole.exe --self-test  ，结果写在 self_test.log。
 本地 Qwen 辅助理解是可选功能，需要另外安装 Ollama 和 qwen3.5:9b。
-ESP32 固件与源码见 GitHub 仓库的 V3 文件夹。
+ESP32 固件与源码见 GitHub 仓库的 Latest 文件夹（始终是最新版本）。

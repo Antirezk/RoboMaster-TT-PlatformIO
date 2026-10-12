@@ -41,7 +41,7 @@ class AppConfig:
     audio_device: int | str | None = None
     asr_min_log_probability: float = -1.0
     asr_max_no_speech_probability: float = 0.6
-    whisper_dir: str = "models/whisper"     # relative to the V3 folder; ../llm_drone/.cache/whisper is also searched
+    whisper_dir: str = "models/whisper"     # relative to the project folder; ../llm_drone/.cache/whisper is also searched
     asr_allow_download: bool = False        # True: download small.en once if it is not found
     llm_model: str = "qwen3.5:9b"
     llm_timeout_sec: float = 15.0

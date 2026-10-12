@@ -1,10 +1,10 @@
-name: Build Windows app (V3)
+name: Build Windows app (Latest)
 
 on:
   workflow_dispatch:
   push:
     branches: [main, v3-voice-console]
-    paths: ["V3/**", ".github/workflows/build-windows.yml"]
+    paths: ["Latest/**", ".github/workflows/build-windows.yml"]
 
 permissions:
   contents: write          # publish the zip as a GitHub release asset
@@ -16,7 +16,7 @@ jobs:
     defaults:
       run:
         shell: pwsh
-        working-directory: V3
+        working-directory: Latest
     steps:
       - uses: actions/checkout@v4
 

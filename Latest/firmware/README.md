@@ -12,7 +12,7 @@ PC ──Wi-Fi "TT-ToF-Demo" / UDP 9000──▶ ESP32 guard ──UART 1 Mbps�
 ## 编译与烧录
 
 ```powershell
-cd V3/firmware
+cd Latest/firmware
 pio run -e bench                                     # 只编译
 pio run -e bench -t upload --upload-port COM8         # 桌面测试：真实 ToF，飞控回复为模拟，不会飞
 pio run -e live  -t upload --upload-port COM8         # 实际转发给飞控
@@ -66,7 +66,7 @@ pio run -e live  -t upload --upload-port COM8         # 实际转发给飞控
 ## 主机测试（不需要硬件）
 
 ```bash
-cd V3/firmware/host_test
+cd Latest/firmware/host_test
 g++ -std=c++11 -Wall -Wextra -I../src test_policy.cpp -o test_policy && ./test_policy
 g++ -std=c++11 -Wall -Wextra -DTOF_LIVE=1 -DGUARD_HOST_TEST -Istubs -I../src \
     test_firmware.cpp ../src/main.cpp ../src/TelloUart.cpp ../src/PcLink.cpp ../src/ToFSensor.cpp -o test_firmware && ./test_firmware

@@ -1,5 +1,8 @@
 # RoboMaster TT Voice Console · V3
 
+> 📁 **`Latest/` 文件夹始终存放最新版本的全部源码**（语音控制台 + ESP32 固件 + 测试 + 文档）。
+> 当前版本：**V3（3.0.0）**。打包好的 Windows 程序在仓库的 [Releases](../../releases) 页面（选最新一个）。
+
 用英文语音控制大疆 **RoboMaster TT（Tello Talent）** 的桌面程序，配套运行在 TT 开源控制器（ESP32）上的
 **四向 ToF 避障固件**。离线语音识别（Whisper small.en），所有指令都按 **Tello SDK 3.0** 规范检查后才发送。
 图形界面可以切换「低速测试 / 正常飞行」两种模式，以及「直连 TT / 经 ESP32 避障」两种连接方式，避障可以随时开关。
@@ -66,7 +69,7 @@ ESP32 guard) and a live obstacle-avoidance switch.*
 需要 **Windows + Python 3.10 以上**（安装时勾选 *tcl/tk and IDLE*）和一个麦克风。
 
 ```powershell
-cd V3
+cd Latest
 python -m pip install -r requirements.txt
 python tools/check_setup.py              # 检查环境
 python tools/check_setup.py --download   # 若缺 Whisper small.en：联网下载（约 500 MB）到 models/whisper
@@ -87,7 +90,7 @@ python tools/check_setup.py --download   # 若缺 Whisper small.en：联网下�
 ## 项目结构
 
 ```
-V3/
+Latest/
 ├─ OpenTelloControl.vbs / TelloControl.pyw   启动入口
 ├─ tello_app/
 │  ├─ gui.py            Tk 图形界面（模式、连接方式、避障开关、雷达图）
@@ -119,7 +122,7 @@ python -m pytest tests -q                    # 23 个：解析、白名单、控
 
 ## 版本
 
-- **V3**：本仓库。语音控制台（双模式、双连接方式、避障开关、英文界面）+ 重写的 ESP32 守护器固件（带 ID 的协议、
+- **V3（当前，`Latest/` 文件夹）**：语音控制台（双模式、双连接方式、避障开关、英文界面）+ 重写的 ESP32 守护器固件（带 ID 的协议、
   按速度计算刹车距离、自动后退、心跳悬停后降落、会话接管、主机测试）。
 - V2：四向 ToF 实验固件（ESP32 + PC 端）和早期的拆桨电机测试窗口，不包含在本仓库中。
 

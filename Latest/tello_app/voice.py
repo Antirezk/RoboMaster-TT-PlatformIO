@@ -34,7 +34,7 @@ def resolve_model(config):
 
 
 def find_whisper_dir(config):
-    """Return (directory, local_only). Searches V3/<whisper_dir>, then the old V2-era cache."""
+    """Return (directory, local_only). Searches <project>/<whisper_dir>, then the old V2-era cache."""
     configured = Path(config.whisper_dir)
     primary = configured if configured.is_absolute() else ROOT / configured
     for candidate in (primary, ROOT.parent / "llm_drone/.cache/whisper"):
