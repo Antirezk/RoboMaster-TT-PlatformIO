@@ -35,6 +35,14 @@ jobs:
       - name: Download the Whisper small.en model
         run: python -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8', download_root='models/whisper')"
 
+      - name: Self-test from source
+        run: |
+          python -c "import sys; from tello_app.selftest import run; sys.exit(run())"
+          $code = $LASTEXITCODE
+          $log = (Get-Content -Raw self_test.log) -replace "`r?`n", "%0A"
+          if ($code -ne 0) { Write-Host "::error title=self-test (source)::$log"; exit 1 } else { Write-Host "::notice title=self-test (source)::$log" }
+          Remove-Item self_test.log, logs -Recurse -Force -ErrorAction SilentlyContinue
+
       - name: Build with PyInstaller
         run: python -m PyInstaller packaging/TelloVoiceConsole.spec --noconfirm
 
@@ -51,8 +59,9 @@ jobs:
         run: |
           $out = Resolve-Path "dist/TelloVoiceConsole"
           $p = Start-Process -FilePath "$out/TelloVoiceConsole.exe" -ArgumentList "--self-test" -WorkingDirectory $out -Wait -PassThru
-          if (Test-Path "$out/self_test.log") { Get-Content "$out/self_test.log" } else { Write-Host "no self_test.log written" }
-          if ($p.ExitCode -ne 0) { throw "self-test failed with exit code $($p.ExitCode)" }
+          if (Test-Path "$out/self_test.log") { $log = (Get-Content -Raw "$out/self_test.log") -replace "`r?`n", "%0A" } else { $log = "no self_test.log written" }
+          if ($p.ExitCode -ne 0) { Write-Host "::error title=self-test (exe)::exit $($p.ExitCode)%0A$log"; exit 1 }
+          Write-Host "::notice title=self-test (exe)::$log"
           Remove-Item -Recurse -Force "$out/logs", "$out/self_test.log" -ErrorAction SilentlyContinue
 
       - name: Zip
