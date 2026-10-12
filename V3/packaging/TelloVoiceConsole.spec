@@ -8,6 +8,8 @@ datas = collect_data_files("faster_whisper")            # silero VAD model used 
 datas += [(os.path.join(ROOT, "tello_app", "config.json"), "tello_app")]
 binaries = collect_dynamic_libs("ctranslate2") + collect_dynamic_libs("onnxruntime")
 hiddenimports = collect_submodules("tello_app")
+# numpy 2.x keeps its C-extension glue in numpy._core; make sure every piece is bundled.
+hiddenimports += collect_submodules("numpy._core")
 
 a = Analysis(
     [os.path.join(SPECPATH, "app_entry.py")],
