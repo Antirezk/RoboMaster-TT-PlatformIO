@@ -1,5 +1,9 @@
 # RoboMaster TT PlatformIO Controller
 
+> **Latest: [V3/](V3/)** — offline English voice console for the RoboMaster TT (low-speed motor test / flight
+> modes, Tello SDK 3.0 whitelist) plus rewritten ESP32 four-direction ToF guard firmware with a live
+> obstacle-avoidance switch. See [V3/README.md](V3/README.md). The content below describes the earlier firmware.
+
 For the PC-only English voice → local ASR → direct Tello SDK UDP demo, see [llm_drone/pc_demo/README.md](llm_drone/pc_demo/README.md). It includes independent command/telemetry channels, a loopback UDP simulator, and visible Mission Pad alignment/landing.
 
 PlatformIO firmware for the RoboMaster TT Open-Source Controller, with four-direction VL53L0X obstacle sensing, Mission Pad support, and a high-level UDP control interface.

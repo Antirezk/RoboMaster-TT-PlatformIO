@@ -1,0 +1,5 @@
+# Python 3.10+ with tkinter (the python.org Windows installer includes it)
+faster-whisper>=1.0
+sounddevice>=0.4
+numpy>=1.24
+pytest>=8
