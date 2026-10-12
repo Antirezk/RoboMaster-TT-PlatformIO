@@ -1,5 +1,10 @@
 # RoboMaster TT PlatformIO Controller
 
+> 📁 **最新版本请看 [Latest/](Latest/)** — 这个文件夹始终存放最新版本的全部源码（当前 V3）：离线英文语音控制台
+> （低速测试 / 正常飞行两种模式，Tello SDK 3.0 白名单）+ 重写的 ESP32 四向 ToF 避障固件（界面上可随时开关避障）。
+> 说明见 [Latest/README.md](Latest/README.md)；免安装的 Windows 程序在 [Releases](../../releases)。
+> *Latest version lives in [Latest/](Latest/). The content below describes the earlier firmware.*
+
 For the PC-only English voice → local ASR → direct Tello SDK UDP demo, see [llm_drone/pc_demo/README.md](llm_drone/pc_demo/README.md). It includes independent command/telemetry channels, a loopback UDP simulator, and visible Mission Pad alignment/landing.
 
 PlatformIO firmware for the RoboMaster TT Open-Source Controller, with four-direction VL53L0X obstacle sensing, Mission Pad support, and a high-level UDP control interface.

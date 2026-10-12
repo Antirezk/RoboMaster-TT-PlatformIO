@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+logs/
+models/
+*.log
+.venv/
+venv/
+
+# firmware
+firmware/.pio/
+firmware/host_test/test_policy
+firmware/host_test/test_firmware
+*.exe
+*.o

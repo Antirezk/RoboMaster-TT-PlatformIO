@@ -1,0 +1,90 @@
+name: Build Windows app (Latest)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, v3-voice-console]
+    paths: ["Latest/**", ".github/workflows/build-windows.yml"]
+
+permissions:
+  contents: write          # publish the zip as a GitHub release asset
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: Latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6.11"
+          python -m PyInstaller --version
+
+      - name: Unit and simulator tests
+        run: |
+          python -m pytest tests -q -rf --tb=short -p no:cacheprovider *> pytest.txt
+          $code = $LASTEXITCODE
+          Get-Content pytest.txt
+          $tail = ((Get-Content pytest.txt | Select-Object -Last 60) -join "%0A")
+          if ($code -ne 0) { Write-Host "::error title=pytest::$tail"; exit 1 } else { Write-Host "::notice title=pytest::$((Get-Content pytest.txt | Select-Object -Last 1))" }
+
+      - name: Download the Whisper small.en model
+        # Plain folder (one copy of the weights) instead of the Hugging Face cache layout,
+        # which duplicates every file on Windows without symlink support.
+        run: python -c "from huggingface_hub import snapshot_download; snapshot_download('Systran/faster-whisper-small.en', local_dir='models/whisper/faster-whisper-small.en', allow_patterns=['config.json','model.bin','tokenizer.json','vocabulary.*','preprocessor_config.json'])"
+
+      - name: Self-test from source
+        run: |
+          python -c "import sys; from tello_app.selftest import run; sys.exit(run())"
+          $code = $LASTEXITCODE
+          $log = (Get-Content -Raw self_test.log) -replace "`r?`n", "%0A"
+          if ($code -ne 0) { Write-Host "::error title=self-test (source)::$log"; exit 1 } else { Write-Host "::notice title=self-test (source)::$log" }
+          Remove-Item self_test.log, logs -Recurse -Force -ErrorAction SilentlyContinue
+
+      - name: Build with PyInstaller
+        run: python -m PyInstaller packaging/TelloVoiceConsole.spec --noconfirm
+
+      - name: Add model, config and readme next to the exe
+        run: |
+          $out = "dist/TelloVoiceConsole"
+          New-Item -ItemType Directory -Force "$out/models" | Out-Null
+          Copy-Item -Recurse models/whisper "$out/models/whisper"
+          Copy-Item tello_app/config.json "$out/config.json"
+          Copy-Item packaging/README_FIRST.txt "$out/README_FIRST.txt"
+          $sizes = Get-ChildItem "$out", "$out/_internal" -Directory | ForEach-Object {
+            $mb = (Get-ChildItem $_.FullName -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
+            [pscustomobject]@{ Name = $_.Name; MB = [math]::Round($mb, 1) } } | Sort-Object MB -Descending | Select-Object -First 15
+          $total = [math]::Round((Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
+          Write-Host "::notice title=bundle size::total $total MB%0A$(($sizes | ForEach-Object { "$($_.MB) MB  $($_.Name)" }) -join '%0A')"
+
+      - name: Self-test the packaged exe
+        run: |
+          $out = Resolve-Path "dist/TelloVoiceConsole"
+          $p = Start-Process -FilePath "$out/TelloVoiceConsole.exe" -ArgumentList "--self-test" -WorkingDirectory $out -Wait -PassThru
+          if (Test-Path "$out/self_test.log") { $log = (Get-Content -Raw "$out/self_test.log") -replace "`r?`n", "%0A" } else { $log = "no self_test.log written" }
+          if ($p.ExitCode -ne 0) { Write-Host "::error title=self-test (exe)::exit $($p.ExitCode)%0A$log"; exit 1 }
+          Write-Host "::notice title=self-test (exe)::$log"
+          Remove-Item -Recurse -Force "$out/logs", "$out/self_test.log" -ErrorAction SilentlyContinue
+
+      - name: Zip
+        run: |
+          Compress-Archive -Path dist/TelloVoiceConsole -DestinationPath TelloVoiceConsole-V3-win64.zip -CompressionLevel Optimal
+          "{0:N0} MB" -f ((Get-Item TelloVoiceConsole-V3-win64.zip).Length / 1MB)
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v3-win-build-${{ github.run_number }}"
+          $notes = "Windows 绿色版：解压后双击 TelloVoiceConsole.exe，无需安装 Python。已在 GitHub Windows 构建机上通过 --self-test（Whisper 模型加载与识别、两种连接方式的模拟飞行、窗口启动）。源码 commit ${{ github.sha }}。"
+          gh release create $tag TelloVoiceConsole-V3-win64.zip --target ${{ github.sha }} --prerelease --title "Voice Console V3 - Windows build ${{ github.run_number }}" --notes $notes
