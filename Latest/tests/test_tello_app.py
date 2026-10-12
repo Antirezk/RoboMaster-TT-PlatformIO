@@ -284,9 +284,12 @@ def test_guard_route_prechecks_moves_against_walls():
         assert any("max 141 cm" in t for _, t in rig.logs)
         rig.run("forward 100")
         rig.run("forward 100")                         # now 0.9 m from the wall
+        time.sleep(0.3)                                # let the 50 ms ToF samples settle
         rig.run("forward 40")                          # needs 0.4 + 0.58 m
-        # the last 50 ms sample may still be a few mm behind the final position
-        assert any(re.search(r"obstacle front at 0\.9[0-4] m \(needs > 0\.98 m\)", t) for _, t in rig.logs)
+        refused = [re.search(r"refused forward 40: obstacle front at (\d\.\d\d) m \(needs > 0\.98 m\)", t)
+                   for _, t in rig.logs]
+        seen = [float(m[1]) for m in refused if m]
+        assert seen and 0.85 <= seen[0] < 0.98, rig.logs[-4:]
         assert not any("AVOID_STOP" in e for e in rig.sim.events)      # admitted moves are never cut short
         assert rig.tt.history.count("forward 40") == 0 and rig.tt.history.count("forward 100") == 2
         rig.c.set_avoidance(False)
