@@ -54,7 +54,14 @@ ESP32 guard) and a live obstacle-avoidance switch.*
 - 关闭窗口或断开时：在空中会先降落，电机转动会先停。ESP32 收不到 PC 心跳 1.5 s 会悬停，6 s 会降落。
 - `emergency`（紧急停桨）只能通过按钮触发。
 
-## 安装
+## 下载即用（Windows 绿色版）
+
+在仓库的 **Releases** 页面下载 `TelloVoiceConsole-V3-win64.zip`，解压后双击 `TelloVoiceConsole.exe`。
+不需要安装 Python，整个文件夹可以拷到任何 Windows 10/11 64 位电脑上直接用（离线语音模型已包含在内）。
+这个包由 GitHub Actions 在 Windows 上自动打包（`.github/workflows/build-windows.yml`，打包配置见 `packaging/`），
+发布前会运行 `TelloVoiceConsole.exe --self-test` 自检。
+
+## 从源码安装
 
 需要 **Windows + Python 3.10 以上**（安装时勾选 *tcl/tk and IDLE*）和一个麦克风。
 
@@ -98,6 +105,7 @@ V3/
 │  └─ host_test/        不需要硬件的 C++ 测试（含 Arduino 替身）
 ├─ tests/test_tello_app.py
 ├─ tools/check_setup.py
+├─ packaging/           Windows 打包（PyInstaller spec、exe 入口、README_FIRST.txt）
 └─ docs/screenshots/
 ```
 

@@ -4,7 +4,17 @@ import json
 import math
 from pathlib import Path
 
-DEFAULT_PATH = Path(__file__).with_name("config.json")
+BUNDLED_PATH = Path(__file__).with_name("config.json")
+
+
+def default_path():
+    """A config.json next to the packaged exe wins over the copy inside the package."""
+    from . import ROOT
+    beside = ROOT / "config.json"
+    return beside if beside.exists() else BUNDLED_PATH
+
+
+DEFAULT_PATH = BUNDLED_PATH
 
 
 @dataclass(frozen=True)
@@ -66,8 +76,8 @@ class AppConfig:
                 raise ValueError(f"invalid {name}")
 
     @classmethod
-    def load(cls, path=DEFAULT_PATH):
-        path = Path(path)
+    def load(cls, path=None):
+        path = Path(path) if path is not None else default_path()
         if not path.exists():
             return cls()
         data = json.loads(path.read_text(encoding="utf-8"))
