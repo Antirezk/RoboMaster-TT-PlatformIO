@@ -54,18 +54,19 @@ def _whisper():
     import numpy as np
     from .config import AppConfig
     from .speech.asr import FasterWhisperASR
-    from .voice import find_whisper_dir
+    from pathlib import Path
+    from .voice import resolve_model
     config = AppConfig.load()
-    folder, local = find_whisper_dir(config)
+    model, root, local = resolve_model(config)
     if not local:
-        raise RuntimeError(f"model not bundled in {folder}")
-    asr = FasterWhisperASR(model_name=config.asr_model, language="en", local_files_only=True,
-                           download_root=str(folder), compute_type="int8")
+        raise RuntimeError(f"model not bundled in {root}")
+    asr = FasterWhisperASR(model_name=model, language="en", local_files_only=True,
+                           download_root=root, compute_type="int8")
     asr.load()
     t = np.arange(16000 * 2) / 16000
     clip = (0.02 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)   # 2 s tone
     result = asr.transcribe(clip)
-    return f"model in {folder.name}, transcript={result.text!r}"
+    return f"model {Path(model).name}, transcript={result.text!r}"
 
 
 def _flight(route):

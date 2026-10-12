@@ -15,12 +15,30 @@ PROMPTS = {
 }
 
 
+def flat_model_dir(config):
+    """Plain copy of the model (model.bin + tokenizer, no Hugging Face cache layout).
+    Used by the packaged exe: one copy of the weights instead of blobs + snapshots."""
+    configured = Path(config.whisper_dir)
+    primary = configured if configured.is_absolute() else ROOT / configured
+    flat = primary / f"faster-whisper-{config.asr_model}"
+    return flat if (flat / "model.bin").is_file() else None
+
+
+def resolve_model(config):
+    """-> (model name or path for WhisperModel, download_root, local_files_only)."""
+    flat = flat_model_dir(config)
+    if flat is not None:
+        return str(flat), None, True
+    folder, local_only = find_whisper_dir(config)
+    return config.asr_model, str(folder), local_only
+
+
 def find_whisper_dir(config):
     """Return (directory, local_only). Searches V3/<whisper_dir>, then the old V2-era cache."""
     configured = Path(config.whisper_dir)
     primary = configured if configured.is_absolute() else ROOT / configured
     for candidate in (primary, ROOT.parent / "llm_drone/.cache/whisper"):
-        if candidate.is_dir() and any(candidate.glob(f"*{config.asr_model}*")):
+        if candidate.is_dir() and any(p.is_dir() for p in candidate.glob(f"*{config.asr_model}*")):
             return candidate, True
     if config.asr_allow_download:
         primary.mkdir(parents=True, exist_ok=True)
@@ -46,10 +64,10 @@ class VoiceWorker:
     def _default_factory(self):
         from .speech.asr import FasterWhisperASR
         from .speech.microphone import MicrophoneRecorder
-        folder, local_only = find_whisper_dir(self.config)
-        asr = FasterWhisperASR(model_name=self.config.asr_model, device=self.config.asr_device,
+        model, root, local_only = resolve_model(self.config)
+        asr = FasterWhisperASR(model_name=model, device=self.config.asr_device,
                                compute_type=self.config.asr_compute_type, language="en",
-                               local_files_only=local_only, download_root=str(folder))
+                               local_files_only=local_only, download_root=root)
         asr.load()
         recorder = MicrophoneRecorder(device=self.config.audio_device, speech_timeout_sec=8.0,
                                       max_record_sec=10.0)

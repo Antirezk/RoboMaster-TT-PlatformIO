@@ -39,7 +39,9 @@ jobs:
           if ($code -ne 0) { Write-Host "::error title=pytest::$tail"; exit 1 } else { Write-Host "::notice title=pytest::$((Get-Content pytest.txt | Select-Object -Last 1))" }
 
       - name: Download the Whisper small.en model
-        run: python -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8', download_root='models/whisper')"
+        # Plain folder (one copy of the weights) instead of the Hugging Face cache layout,
+        # which duplicates every file on Windows without symlink support.
+        run: python -c "from huggingface_hub import snapshot_download; snapshot_download('Systran/faster-whisper-small.en', local_dir='models/whisper/faster-whisper-small.en', allow_patterns=['config.json','model.bin','tokenizer.json','vocabulary.*','preprocessor_config.json'])"
 
       - name: Self-test from source
         run: |
@@ -59,7 +61,11 @@ jobs:
           Copy-Item -Recurse models/whisper "$out/models/whisper"
           Copy-Item tello_app/config.json "$out/config.json"
           Copy-Item packaging/README_FIRST.txt "$out/README_FIRST.txt"
-          Get-ChildItem $out | Format-Table Name, Length
+          $sizes = Get-ChildItem "$out", "$out/_internal" -Directory | ForEach-Object {
+            $mb = (Get-ChildItem $_.FullName -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
+            [pscustomobject]@{ Name = $_.Name; MB = [math]::Round($mb, 1) } } | Sort-Object MB -Descending | Select-Object -First 15
+          $total = [math]::Round((Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
+          Write-Host "::notice title=bundle size::total $total MB%0A$(($sizes | ForEach-Object { "$($_.MB) MB  $($_.Name)" }) -join '%0A')"
 
       - name: Self-test the packaged exe
         run: |

@@ -47,18 +47,21 @@ def main():
         report(False, "microphone", str(exc))
 
     from tello_app.config import AppConfig
-    from tello_app.voice import find_whisper_dir
+    from tello_app.voice import resolve_model
     config = AppConfig.load()
     try:
-        folder, _ = find_whisper_dir(config)
-        report(True, f"Whisper model {config.asr_model}", str(folder))
+        model, root, local = resolve_model(config)
+        if not local:
+            raise RuntimeError("model not downloaded yet")
+        report(True, f"Whisper model {config.asr_model}", root or model)
     except RuntimeError as exc:
         if args.download:
             print(f"  ... downloading {config.asr_model} (about 500 MB) ...")
-            from faster_whisper import WhisperModel
-            target = ROOT / config.whisper_dir
-            target.mkdir(parents=True, exist_ok=True)
-            WhisperModel(config.asr_model, device="cpu", compute_type="int8", download_root=str(target))
+            from huggingface_hub import snapshot_download
+            target = ROOT / config.whisper_dir / f"faster-whisper-{config.asr_model}"
+            snapshot_download(f"Systran/faster-whisper-{config.asr_model}", local_dir=str(target),
+                              allow_patterns=["config.json", "model.bin", "tokenizer.json", "vocabulary.*",
+                                              "preprocessor_config.json"])
             report(True, f"Whisper model {config.asr_model}", f"downloaded to {target}")
         else:
             report(False, f"Whisper model {config.asr_model}", str(exc))
