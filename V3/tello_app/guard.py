@@ -109,7 +109,7 @@ class GuardLink:
         while not self.stop_event.is_set():
             try:
                 packet, peer = self.socket.recvfrom(4096)
-            except socket.timeout:
+            except (socket.timeout, ConnectionResetError):   # Windows reports ICMP errors here
                 continue
             except OSError:
                 return

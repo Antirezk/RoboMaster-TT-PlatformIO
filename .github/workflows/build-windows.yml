@@ -30,7 +30,12 @@ jobs:
           python -m pip install -r requirements.txt pyinstaller==6.11.1
 
       - name: Unit and simulator tests
-        run: python -m pytest tests -q
+        run: |
+          python -m pytest tests -q -rf --tb=short -p no:cacheprovider *> pytest.txt
+          $code = $LASTEXITCODE
+          Get-Content pytest.txt
+          $tail = ((Get-Content pytest.txt | Select-Object -Last 60) -join "%0A")
+          if ($code -ne 0) { Write-Host "::error title=pytest::$tail"; exit 1 } else { Write-Host "::notice title=pytest::$((Get-Content pytest.txt | Select-Object -Last 1))" }
 
       - name: Download the Whisper small.en model
         run: python -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8', download_root='models/whisper')"

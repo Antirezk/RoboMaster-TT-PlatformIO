@@ -48,6 +48,8 @@ class TelloLink:
                 packet, peer = self.socket.recvfrom(2048)
             except (BlockingIOError, socket.timeout):
                 return
+            except ConnectionResetError:          # Windows: ICMP from an earlier datagram
+                continue
             if peer[0] == self.remote[0]:
                 self.log("warn", f"Discarded late/extra reply: {packet.decode('ascii', 'replace').strip()!r}")
             if seconds and time.monotonic() >= deadline:
@@ -81,7 +83,7 @@ class TelloLink:
                     self.socket.settimeout(min(0.1, remaining))
                     try:
                         packet, peer = self.socket.recvfrom(2048)
-                    except socket.timeout:
+                    except (socket.timeout, ConnectionResetError):
                         continue
                     if peer[0] != self.remote[0]:
                         continue
@@ -180,7 +182,7 @@ class StateListener:
         while not self.stop_event.is_set():
             try:
                 packet, peer = self.socket.recvfrom(4096)
-            except socket.timeout:
+            except (socket.timeout, ConnectionResetError):
                 continue
             except OSError:
                 return
