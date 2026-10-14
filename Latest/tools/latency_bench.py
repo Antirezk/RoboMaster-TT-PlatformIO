@@ -180,7 +180,9 @@ def run(args):
         try:
             llm.request("take off", MODE)
         except SDKError as exc:
-            print(f"Qwen warm-up failed: {exc}")
+            raise SystemExit(f"\nQwen is not working, so its latency cannot be measured:\n  {exc}\n"
+                             f"Check `ollama list` and set \"llm_model\" in tello_app/config.json "
+                             f"(now: {config.llm_model}), or run without --llm.")
         info["llm_warmup_s"] = round(time.perf_counter() - t, 3)
         print(f"Qwen warm-up took {info['llm_warmup_s']:.2f} s")
 
@@ -210,9 +212,9 @@ def run(args):
                 t2 = time.perf_counter()
                 try:
                     llm_out = json.dumps(llm.request(text, MODE))
+                    llm_s = time.perf_counter() - t2
                 except SDKError as exc:
-                    llm_out = f"error: {exc}"
-                llm_s = time.perf_counter() - t2
+                    llm_out = f"error: {exc}"   # failed calls are not counted as latency
 
             expected = clip["expected"]
             correct = (rule_out == expected) if expected else not rule_out.startswith(("takeoff", "up", "down", "forward", "back", "left", "right", "cw", "ccw", "land", "stop"))
@@ -226,7 +228,7 @@ def run(args):
                          "no_speech_prob": round(result.no_speech_probability, 3)})
             r = rows[-1]
             print(f"  {r['file']}  ASR {asr_s * 1000:6.0f} ms"
-                  + (f"  LLM {llm_s * 1000:6.0f} ms" if llm_s is not None else "")
+                  + (f"  LLM {llm_s * 1000:6.0f} ms" if llm_s is not None else ("  LLM  error" if llm else ""))
                   + f"  {'OK ' if correct else 'XX '} \"{text}\" -> {rule_out}")
 
     summary = {"system": info,
@@ -234,6 +236,7 @@ def run(args):
                "rtf": stats([r["rtf"] for r in rows if r["rtf"] is not None]),
                "rule_ms": stats([r["rule_ms"] for r in rows]),
                "llm_s": stats([r["llm_s"] for r in rows if r["llm_s"] != ""]),
+               "llm_errors": sum(1 for r in rows if r["llm_output"].startswith("error")),
                "correct": f"{sum(r['correct'] for r in rows)}/{len(rows)}"}
 
     OUT_DIR.mkdir(exist_ok=True)
@@ -253,6 +256,8 @@ def run(args):
             print(f"{key:8s} n={s['n']:3d}  mean {s['mean']:.3f}  median {s['median']:.3f}  "
                   f"p90 {s['p90']:.3f}  max {s['max']:.3f} {unit}")
     print(f"correct  {summary['correct']}")
+    if summary["llm_errors"]:
+        print(f"WARNING  {summary['llm_errors']} Qwen calls failed and were left out of llm_s (see llm_output in the CSV)")
     print(f"\nSaved {csv_path}\n      {json_path}")
 
 
