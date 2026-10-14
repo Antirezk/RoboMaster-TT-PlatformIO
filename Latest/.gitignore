@@ -13,3 +13,7 @@ firmware/host_test/test_policy
 firmware/host_test/test_firmware
 *.exe
 *.o
+
+# latency benchmark (voice recordings and results stay local)
+bench_audio/
+bench_results/
