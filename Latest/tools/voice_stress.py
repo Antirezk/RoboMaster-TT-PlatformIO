@@ -6,6 +6,8 @@
     python tools/voice_stress.py run                 # ~1 hour: clean + noisy copies through Whisper + rules
     python tools/voice_stress.py run --llm           # also let the local Qwen model try what the rules miss
     python tools/voice_stress.py run --max-minutes 10   # shorter run (clips are shuffled, so any prefix is balanced)
+    python tools/voice_stress.py run --audio-dir compare --noise-repeats 5
+                                                     # your own recordings: compare/phrases.csv + WAV/MP3 files
 
 What it does
   1. generate: every phrase in PHRASES is spoken by each installed English SAPI voice at three speaking
@@ -91,11 +93,17 @@ def save_wav(path, audio):
 
 def load_wav(path):
     import numpy as np
-    with wave.open(str(path), "rb") as w:
+    try:
+        w = wave.open(str(path), "rb")
+    except (wave.Error, EOFError):                      # not a plain PCM WAV (MP3, float WAV, ...)
+        from faster_whisper.audio import decode_audio
+        return np.asarray(decode_audio(str(path), sampling_rate=RATE), dtype=np.float32)
+    with w:
         rate, ch, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
         data = w.readframes(w.getnframes())
     if width != 2:
-        raise SystemExit(f"{path.name}: expected 16-bit PCM")
+        from faster_whisper.audio import decode_audio
+        return np.asarray(decode_audio(str(path), sampling_rate=RATE), dtype=np.float32)
     x = np.frombuffer(data, dtype="<i2").astype(np.float32) / 32768.0
     if ch > 1:
         x = x.reshape(-1, ch).mean(axis=1)
@@ -197,16 +205,28 @@ def run(args):
     from tello_app.speech.asr import FasterWhisperASR
     from tello_app.voice import PROMPTS, resolve_model
 
-    index = AUDIO_DIR / "phrases.csv"
+    audio_dir = Path(args.audio_dir) if args.audio_dir else AUDIO_DIR
+    if not audio_dir.is_absolute():
+        audio_dir = ROOT / audio_dir
+    index = audio_dir / "phrases.csv"
     if not index.exists():
-        raise SystemExit("No clips yet. Run:  python tools/voice_stress.py generate")
-    clips = list(csv.DictReader(open(index, encoding="utf-8")))
+        raise SystemExit(f"No {index}. Run:  python tools/voice_stress.py generate  (or put phrases.csv there)")
+    clips = [c for c in csv.DictReader(open(index, encoding="utf-8-sig"))]
+    missing = [c["file"] for c in clips if not (audio_dir / c["file"]).is_file()]
+    if missing:
+        print(f"Skipping {len(missing)} missing files: {', '.join(missing[:10])}{' ...' if len(missing) > 10 else ''}")
+    clips = [c for c in clips if c["file"] not in set(missing)]
+    for c in clips:
+        c.setdefault("voice", audio_dir.name); c.setdefault("rate", "-"); c.setdefault("phrase_id", c["file"])
+        c["voice"] = c.get("voice") or audio_dir.name
+        c["rate"] = c.get("rate") or "-"
     config = AppConfig.load()
-    audio = {c["file"]: load_wav(AUDIO_DIR / c["file"]) for c in clips}
+    audio = {c["file"]: load_wav(audio_dir / c["file"]) for c in clips}
     babble_pool = [audio[c["file"]] for c in clips if c["expected"] == ""] or list(audio.values())
 
     rng = random.Random(args.seed)
-    jobs = [(c, kind, snr) for c in clips for kind, snr in CONDITIONS]
+    jobs = [(c, kind, snr) for c in clips for kind, snr in CONDITIONS
+            for _ in range(1 if kind == "clean" else max(1, args.noise_repeats))]
     rng.shuffle(jobs)
     noise_rng = np.random.default_rng(args.seed)
 
@@ -228,7 +248,7 @@ def run(args):
     OUT_DIR.mkdir(exist_ok=True)
     stamp = f"{socket.gethostname()}_{datetime.now():%Y%m%d_%H%M%S}"
     csv_path = OUT_DIR / f"stress_{stamp}.csv"
-    fields = ["n", "file", "voice", "rate", "phrase_id", "phrase", "expected", "noise", "snr_db", "transcript",
+    fields = ["n", "file", "voice", "rate", "phrase_id", "phrase", "expected", "handled_by", "noise", "snr_db", "transcript",
               "gate", "rule_output", "llm_output", "final", "source", "outcome", "asr_s", "rule_ms", "llm_s"]
     f = open(csv_path, "w", newline="", encoding="utf-8")
     writer = csv.DictWriter(f, fieldnames=fields); writer.writeheader()
@@ -288,6 +308,7 @@ def run(args):
             counts[cond]["n"] += 1
             writer.writerow({"n": done, "file": c["file"], "voice": c["voice"], "rate": c["rate"],
                              "phrase_id": c["phrase_id"], "phrase": c["phrase"], "expected": expected,
+                             "handled_by": c.get("handled_by", ""),
                              "noise": kind, "snr_db": "" if snr is None else snr, "transcript": text,
                              "gate": int(passed), "rule_output": rule_out, "llm_output": llm_out, "final": final,
                              "source": source, "outcome": outcome, "asr_s": round(asr_s, 4),
@@ -330,6 +351,8 @@ def run(args):
             summary["by_condition"][cond] = block(sub)
     summary["overall"] = block(rows)
     summary["by_voice"] = {v: block([r for r in rows if r["voice"] == v]) for v in sorted({r["voice"] for r in rows})}
+    summary["by_handled_by"] = {k: block([r for r in rows if r["handled_by"] == k])
+                                for k in sorted({r["handled_by"] for r in rows if r["handled_by"]})}
     summary["by_rate"] = {k: block([r for r in rows if r["rate"] == k]) for k in SPEAK_RATES}
     summary["wrong_examples"] = [{k: r[k] for k in ("phrase", "noise", "snr_db", "transcript", "final", "source")}
                                  for r in rows if r["outcome"] == "wrong"][:50]
@@ -357,6 +380,9 @@ def main():
     p_run.add_argument("--llm-model", default="", help="Ollama model for --llm (default: config.json)")
     p_run.add_argument("--max-minutes", type=float, default=0, help="stop after this many minutes (0 = all)")
     p_run.add_argument("--seed", type=int, default=1)
+    p_run.add_argument("--audio-dir", default="", help="folder with phrases.csv and the clips (default stress_audio)")
+    p_run.add_argument("--noise-repeats", type=int, default=1,
+                       help="noisy copies per clip and condition, each with fresh noise (default 1)")
     args = parser.parse_args()
     generate(args) if args.cmd == "generate" else run(args)
 

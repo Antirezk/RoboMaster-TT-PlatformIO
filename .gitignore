@@ -13,3 +13,5 @@ htmlcov/
 stress_audio/
 stress_results/
 llm_results/
+Latest/compare/*.wav
+Latest/compare/*.mp3
