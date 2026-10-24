@@ -154,6 +154,8 @@ def main():
     ap.add_argument("--noise-repeats", type=int, default=3, help="noisy copies per clip and condition (default 3)")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--llm-timeout", type=float, default=30.0)
+    ap.add_argument("--no-sentence-gate", action="store_true",
+                    help="reproduce the earlier version: send multi-sentence transcripts to the model too")
     args = ap.parse_args()
 
     app = Path(args.app)
@@ -162,7 +164,12 @@ def main():
     sys.path.insert(0, str(app))
     import numpy as np
     from tello_app.config import AppConfig
+    from tello_app import llm as llm_module
     from tello_app.llm import QwenInterpreter
+    eligible = getattr(llm_module, "eligible", None)
+    if args.no_sentence_gate or eligible is None:
+        eligible = lambda _text: True
+    sentence_gate = not args.no_sentence_gate and hasattr(llm_module, "eligible")
     from tello_app.parser import NotUnderstood, parse
     from tello_app.sdk import SDKError
     from tello_app.speech.asr import FasterWhisperASR
@@ -244,7 +251,7 @@ def main():
         configs += models
     print("Configurations:", ", ".join(configs))
 
-    out_dir = HERE / f"results_{datetime.now():%Y%m%d_%H%M%S}"
+    out_dir = HERE / f"results_{datetime.now():%Y%m%d_%H%M%S}{'' if sentence_gate else '_nogate'}"
     out_dir.mkdir()
     ofields = ["config", "file", "phrase", "expected", "handled_by", "noise", "snr_db", "rep", "transcript", "gate",
                "rule_output", "llm_raw", "final", "source", "outcome", "llm_s"]
@@ -282,6 +289,8 @@ def main():
                 rule_out = cmd if status == "ok" else f"({status})"
                 if status == "ok":
                     final, source = cmd, "rules"
+                elif status == "nu" and llm is not None and not eligible(text):
+                    raw = "(not sent)"
                 elif status == "nu" and llm is not None:
                     if text not in llm_cache:
                         t = time.perf_counter()
@@ -321,7 +330,7 @@ def main():
             cmd = [x for x in sub if x["expected"]]
             non = [x for x in sub if not x["expected"]]
             wrong = sum(x["outcome"] == "wrong" for x in sub)
-            raw_wrong = sum(1 for x in sub if x["llm_raw"] not in ("", "(error)", "(invalid)") and x["llm_raw"] != x["expected"])
+            raw_wrong = sum(1 for x in sub if x["llm_raw"] not in ("", "(error)", "(invalid)", "(not sent)") and x["llm_raw"] != x["expected"])
             return {"n": len(sub), "command_clips": len(cmd),
                     "command_correct": sum(x["outcome"] == "correct" for x in cmd),
                     "noncommand_clips": len(non), "noncommand_moved": sum(x["final"] != "" for x in non),
@@ -347,6 +356,7 @@ def main():
 
     asr_times = [float(r["asr_s"]) for r in rows]
     summary = {"host": socket.gethostname(), "platform": platform.platform(), "finished": datetime.now().isoformat(),
+               "sentence_gate": sentence_gate,
                "clips": len(index), "recognitions": len(rows), "noise_repeats": args.noise_repeats,
                "asr": {"model": config.asr_model, "mean_s": round(statistics.fmean(asr_times), 3) if asr_times else None,
                        "gate_pass": round(sum(r["gate"] == "1" for r in rows) / len(rows), 4) if rows else None},
@@ -357,7 +367,8 @@ def main():
     lines = [f"# Voice pipeline comparison ({len(index)} clips, {len(rows)} recognitions, "
              f"{datetime.now():%d %b %Y})", "",
              f"ASR: {config.asr_model}, mean {summary['asr']['mean_s']} s per clip, confidence gate passed "
-             f"{100 * summary['asr']['gate_pass']:.1f} %.", "",
+             f"{100 * summary['asr']['gate_pass']:.1f} %.",
+             "Single-sentence gate before the model: " + ("on" if sentence_gate else "off (earlier version)") + ".", "",
              "## By configuration (all conditions)", "",
              "| Configuration | Rule commands correct | LLM-only commands correct | Non-commands that moved | "
              "Wrong commands (95 % CI) | Model proposed wrong | LLM mean s |",
