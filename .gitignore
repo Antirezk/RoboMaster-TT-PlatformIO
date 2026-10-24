@@ -12,3 +12,4 @@ htmlcov/
 .env.*
 stress_audio/
 stress_results/
+llm_results/

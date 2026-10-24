@@ -218,7 +218,7 @@ def run(args):
     llm = None
     if args.llm:
         from tello_app.llm import QwenInterpreter
-        llm = QwenInterpreter(config.llm_model, config.llm_timeout_sec)
+        llm = QwenInterpreter(args.llm_model or config.llm_model, config.llm_timeout_sec)
 
     def gate(r):
         return (bool(r.text.strip()) and r.language == "en" and math.isfinite(r.average_log_probability)
@@ -235,7 +235,7 @@ def run(args):
 
     info = {"host": socket.gethostname(), "platform": platform.platform(), "cpu": platform.processor(),
             "asr_model": config.asr_model, "compute_type": config.asr_compute_type,
-            "llm": config.llm_model if args.llm else None, "clips": len(clips), "jobs": len(jobs),
+            "llm": (args.llm_model or config.llm_model) if args.llm else None, "clips": len(clips), "jobs": len(jobs),
             "conditions": [f"{k} {s} dB" if s is not None else k for k, s in CONDITIONS],
             "started": datetime.now().isoformat(timespec="seconds"), "seed": args.seed}
     print(json.dumps(info, indent=1))
@@ -354,6 +354,7 @@ def main():
     sub.add_parser("generate", help="speak every phrase with the Windows voices")
     p_run = sub.add_parser("run", help="run all clips and noise conditions through the pipeline")
     p_run.add_argument("--llm", action="store_true", help="let the local Qwen model try what the rules miss")
+    p_run.add_argument("--llm-model", default="", help="Ollama model for --llm (default: config.json)")
     p_run.add_argument("--max-minutes", type=float, default=0, help="stop after this many minutes (0 = all)")
     p_run.add_argument("--seed", type=int, default=1)
     args = parser.parse_args()
